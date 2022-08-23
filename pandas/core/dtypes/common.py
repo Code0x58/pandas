@@ -2,6 +2,7 @@
 Common type operations.
 """
 
+from functools import lru_cache
 from typing import Any, Callable, Union
 import warnings
 
@@ -591,18 +592,20 @@ def is_string_dtype(arr_or_dtype) -> bool:
     >>> is_string_dtype(pd.Series([1, 2]))
     False
     """
+    return _is_dtype(arr_or_dtype, _string_dtype_condition)
+
+
+@lru_cache(128)
+def _string_dtype_condition(dtype):
     # TODO: gh-15585: consider making the checks stricter.
-    def condition(dtype) -> bool:
-        return dtype.kind in ("O", "S", "U") and not is_excluded_dtype(dtype)
+    if dtype.kind not in ("O", "S", "U"):
+        return False
 
-    def is_excluded_dtype(dtype) -> bool:
-        """
-        These have kind = "O" but aren't string dtypes so need to be explicitly excluded
-        """
-        is_excluded_checks = (is_period_dtype, is_interval_dtype, is_categorical_dtype)
-        return any(is_excluded(dtype) for is_excluded in is_excluded_checks)
+    for exclusion_check in (is_period_dtype, is_interval_dtype, is_categorical_dtype):
+        if exclusion_check(dtype):
+            return False
 
-    return _is_dtype(arr_or_dtype, condition)
+    return True
 
 
 def is_dtype_equal(source, target) -> bool:
