@@ -283,7 +283,7 @@ class ExtensionDtype:
             dtype_or_str = dtype
         else:
             dtype_or_str = type(dtype)
-        return _caching_is_type(dtype_or_str)
+        return cls._caching_is_type(dtype_or_str)
 
     @classmethod
     @lru_cache(128)

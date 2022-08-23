@@ -176,20 +176,26 @@ def ensure_python_int(value: Union[int, np.integer]) -> int:
     return new_value
 
 
+@lru_cache(16)
 def classes(*klasses) -> Callable:
     """ evaluate if the tipo is a subclass of the klasses """
-    return lambda tipo: issubclass(tipo, klasses)
+    @lru_cache(128)
+    def check(tipo):
+        return issubclass(tipo, klasses)
+    return check
 
 
+@lru_cache(16)
 def classes_and_not_datetimelike(*klasses) -> Callable:
     """
     evaluate if the tipo is a subclass of the klasses
     and not a datetimelike
     """
-    return lambda tipo: (
-        issubclass(tipo, klasses)
-        and not issubclass(tipo, (np.datetime64, np.timedelta64))
-    )
+    @lru_cache(128)
+    def check(tipo):
+        return issubclass(tipo, klasses) and not issubclass(tipo, (np.datetime64, np.timedelta64))
+
+    return check
 
 
 def is_object_dtype(arr_or_dtype) -> bool:
