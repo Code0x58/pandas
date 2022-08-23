@@ -312,6 +312,9 @@ else:
         def __instancecheck__(cls, other):
             return isinstance(other, cls.datetime)
 
+        def __subclasscheck__(cls, other):
+            return issubclass(other, cls.datetime)
+
     class __DatetimeSub(metaclass=__Datetime):
         def emit_warning(dummy=0):
             import warnings
@@ -340,6 +343,9 @@ else:
 
         def __instancecheck__(cls, other):
             return isinstance(other, cls.SparseArray)
+
+        def __subclasscheck__(self, other):
+            return issubclass(other, cls.SparseArray)
 
     class __SparseArraySub(metaclass=__SparseArray):
         def emit_warning(dummy=0):

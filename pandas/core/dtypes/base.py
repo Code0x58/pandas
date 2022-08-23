@@ -2,6 +2,7 @@
 Extend pandas with custom array types.
 """
 
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Type, Union
 
 import numpy as np
@@ -278,22 +279,39 @@ class ExtensionDtype:
            conditions is true for ``dtype.dtype``.
         """
         dtype = getattr(dtype, "dtype", dtype)
+        if isinstance(dtype, str):
+            dtype_or_str = dtype
+        else:
+            dtype_or_str = type(dtype)
+        return _caching_is_type(dtype_or_str)
 
-        if isinstance(dtype, (ABCSeries, ABCIndexClass, ABCDataFrame, np.dtype)):
+    @classmethod
+    @lru_cache(128)
+    def _caching_is_type(cls, dtype_or_str):
+        """Check if dtype_or_str is a dtype class or string that can build one."""
+        if dtype_or_str is None:
+            return False
+
+        # use a low level check for str dtypes to avoid the overloaded __isinstance__ logic in dtypes
+        arg_type = type(dtype_or_str)
+        if type(arg_type) is not type and str in type(dtype_or_str).mro():
+            try:
+                return cls.construct_from_string(dtype_or_str) is not None
+            except TypeError:
+                return False
+        # now we know we have some dtype class so can use issubclass
+
+        if issubclass(dtype_or_str, (ABCSeries, ABCIndexClass, ABCDataFrame, np.dtype)):
             # https://github.com/pandas-dev/pandas/issues/22960
             # avoid passing data to `construct_from_string`. This could
             # cause a FutureWarning from numpy about failing elementwise
             # comparison from, e.g., comparing DataFrame == 'category'.
             return False
-        elif dtype is None:
-            return False
-        elif isinstance(dtype, cls):
+
+        # this could be fun - need to cache for each class, could be expressed as _cache[cls] = lru_cache(test, cls)
+        if issubclass(dtype_or_str, cls):
             return True
-        if isinstance(dtype, str):
-            try:
-                return cls.construct_from_string(dtype) is not None
-            except TypeError:
-                return False
+
         return False
 
     @property
