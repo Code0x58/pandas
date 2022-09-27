@@ -294,23 +294,23 @@ class ExtensionDtype:
 
         # use a low level check for str dtypes to avoid the overloaded __isinstance__ logic in dtypes
         arg_type = type(dtype_or_str)
-        if type(arg_type) is not type and str in type(dtype_or_str).mro():
+        if issubclass(arg_type, type):
+            # now we know we have some dtype class so can use issubclass
+            if issubclass(dtype_or_str, (ABCSeries, ABCIndexClass, ABCDataFrame, np.dtype)):
+                # https://github.com/pandas-dev/pandas/issues/22960
+                # avoid passing data to `construct_from_string`. This could
+                # cause a FutureWarning from numpy about failing elementwise
+                # comparison from, e.g., comparing DataFrame == 'category'.
+                return False
+
+            # this could be fun - need to cache for each class, could be expressed as _cache[cls] = lru_cache(test, cls)
+            if issubclass(dtype_or_str, cls):
+                return True
+        elif str in arg_type.mro():
             try:
                 return cls.construct_from_string(dtype_or_str) is not None
             except TypeError:
                 return False
-        # now we know we have some dtype class so can use issubclass
-
-        if issubclass(dtype_or_str, (ABCSeries, ABCIndexClass, ABCDataFrame, np.dtype)):
-            # https://github.com/pandas-dev/pandas/issues/22960
-            # avoid passing data to `construct_from_string`. This could
-            # cause a FutureWarning from numpy about failing elementwise
-            # comparison from, e.g., comparing DataFrame == 'category'.
-            return False
-
-        # this could be fun - need to cache for each class, could be expressed as _cache[cls] = lru_cache(test, cls)
-        if issubclass(dtype_or_str, cls):
-            return True
 
         return False
 
